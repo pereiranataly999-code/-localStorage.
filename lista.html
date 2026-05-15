@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav>
+            <ul>
+                <li class="inicio"><a href="index.php">Início</a></li>
+                <li class="categorias"><a href="lista.html?entity=categorias">Categorias</a></li>
+                <li class="postagens"><a href="lista.html?entity=noticias">Notícias</a></li>
+                <li class="usuario"><a href="lista.html?entity=usuarios">Usuários</a></li>
+            </ul>
+            <div class="perfil-usuario">
+                <img src="imagens/smiling-young-man.avif" alt="avatar">
+                <span>Nataly Pereira</span>
+            </div>
+        </nav>
+        <main>
+            <div class="header-content">
+                <h2 id="pageTitle">Dashboard</h2>
+                <p id="pageDescription">Gerencie as informações do seu sistema.</p>
+            </div>
+            <div class="card-form">
+                <div class="form-header">
+                    <div class="form-row" style="justify-content: space-between; align-items: center;">
+                        <div>
+                            <h3 id="listTitle">Lista</h3>
+                            <p id="listDescription">Itens armazenados no localStorage.</p>
+                        </div>
+                        <div class="div-newuser">
+                            <a id="newButton" class="btn">Novo registro</a>
+                        </div>
+                    </div>
+                </div>
+                <div id="tableContainer"></div>
+            </div>
+        </main>
+    </div>
+    <footer>
+        <p>&copy; 2026 - Desenvolvido na aula de Web I</p>
+    </footer>
+
+    <script>
+        const entityConfig = {
+            usuarios: {
+                label: 'Usuários',
+                description: 'Cadastre e gerencie contas de usuário.',
+                fields: [
+                    { name: 'nome', label: 'Nome' },
+                    { name: 'email', label: 'Email' }
+                ]
+            },
+            categorias: {
+                label: 'Categorias',
+                description: 'Cadastre e gerencie categorias de conteúdo.',
+                fields: [
+                    { name: 'titulo', label: 'Título' },
+                    { name: 'cor', label: 'Cor' }
+                ]
+            },
+            noticias: {
+                label: 'Notícias',
+                description: 'Cadastre e gerencie notícias e artigos.',
+                fields: [
+                    { name: 'titulo', label: 'Título' },
+                    { name: 'data', label: 'Data' },
+                    { name: 'categoria', label: 'Categoria' },
+                    { name: 'texto', label: 'Texto' }
+                ]
+            }
+        };
+
+        const params = new URLSearchParams(window.location.search);
+        const entity = params.get('entity') || 'usuarios';
+        const config = entityConfig[entity] || entityConfig.usuarios;
+        const storageKey = `dashboard_${entity}`;
+
+        document.getElementById('pageTitle').textContent = `Gestão de ${config.label}`;
+        document.getElementById('pageDescription').textContent = config.description;
+        document.getElementById('listTitle').textContent = `Registros de ${config.label}`;
+        document.getElementById('listDescription').textContent = `Aqui estão todos os ${config.label.toLowerCase()} cadastrados no localStorage.`;
+        document.getElementById('newButton').href = `cadastro.html?entity=${entity}`;
+
+        function getItems() {
+            return JSON.parse(localStorage.getItem(storageKey) || '[]');
+        }
+
+        function saveItems(items) {
+            localStorage.setItem(storageKey, JSON.stringify(items));
+            renderTable();
+        }
+
+        function deleteItem(id) {
+            if (!confirm('Tem certeza que quer excluir este registro?')) return;
+            const items = getItems().filter(item => item.id !== id);
+            saveItems(items);
+        }
+
+        function getCategoryLabel(id) {
+            const categories = JSON.parse(localStorage.getItem('dashboard_categorias') || '[]');
+            const category = categories.find(cat => cat.id === id);
+            return category ? category.titulo : id || 'Sem categoria';
+        }
+
+        function renderTable() {
+            const items = getItems();
+            let html = '';
+            if (!items.length) {
+                html = '<p>Nenhum registro encontrado. Clique em "Novo registro" para adicionar.</p>';
+            } else {
+                html = '<div class="table-responsive"><table><thead><tr><th>ID</th>';
+                config.fields.forEach(field => { html += `<th>${field.label}</th>`; });
+                html += '<th>Ações</th></tr></thead><tbody>';
+                items.forEach(item => {
+                    html += `<tr><td>${item.id}</td>`;
+                    config.fields.forEach(field => {
+                        const value = item[field.name] || '';
+                        let display = value;
+                        if (field.name === 'texto') {
+                            display = value.substring(0, 80) + (value.length > 80 ? '...' : '');
+                        }
+                        if (field.name === 'categoria') {
+                            display = getCategoryLabel(value);
+                        }
+                        if (field.name === 'cor') {
+                            display = `<span style="display:inline-flex;align-items:center;gap:8px"><span style="width:20px;height:20px;border:1px solid #ccc;background:${value};border-radius:4px"></span>${value}</span>`;
+                        }
+                        html += `<td>${display}</td>`;
+                    });
+                    html += `<td><a class="btn-add" href="cadastro.html?entity=${entity}&id=${item.id}">Editar</a> <button class="btn-add" style="margin-left: 8px;" onclick="deleteItem('${item.id}')">Excluir</button></td></tr>`;
+                });
+                html += '</tbody></table></div>';
+            }
+            document.getElementById('tableContainer').innerHTML = html;
+        }
+
+        renderTable();
+    </script>
+</body>
+</html>

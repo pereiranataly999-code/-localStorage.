@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <nav>
+            <ul>
+                <li class="inicio"><a href="index.php">Início</a></li>
+                <li class="categorias"><a href="lista.html?entity=categorias">Categorias</a></li>
+                <li class="postagens"><a href="lista.html?entity=noticias">Notícias</a></li>
+                <li class="usuario"><a href="lista.html?entity=usuarios">Usuários</a></li>
+            </ul>
+            <div class="perfil-usuario">
+                <img src="imagens/smiling-young-man.avif" alt="avatar">
+                <span>Nataly Pereira</span>
+            </div>
+        </nav>
+        <main>
+            <div class="header-content">
+                <h2 id="pageTitle">Cadastro</h2>
+                <p id="pageDescription">Preencha o formulário para cadastrar um novo item.</p>
+            </div>
+            <div class="card-form">
+                <div class="form-header">
+                    <h3 id="formTitle">Formulário de cadastro</h3>
+                </div>
+                <form id="entityForm">
+                    <div id="fieldsContainer"></div>
+                    <div class="form-row" style="justify-content: flex-end; gap: 15px;">
+                        <a id="cancelButton" class="btn btn-add" href="lista.html?entity=usuarios">Cancelar</a>
+                        <button type="submit" class="btn-save">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+    <footer>
+        <p>&copy; 2026 - Desenvolvido na aula de Web I</p>
+    </footer>
+
+    <script>
+        const entityConfig = {
+            usuarios: {
+                label: 'Usuário',
+                description: 'Cadastre ou edite usuários do sistema.',
+                fields: [
+                    { name: 'nome', label: 'Nome', type: 'text', placeholder: 'Digite o nome' },
+                    { name: 'email', label: 'Email', type: 'email', placeholder: 'Digite o email' }
+                ]
+            },
+            categorias: {
+                label: 'Categoria',
+                description: 'Cadastre ou edite categorias.',
+                fields: [
+                    { name: 'titulo', label: 'Título', type: 'text', placeholder: 'Digite o título da categoria' },
+                    { name: 'cor', label: 'Cor', type: 'color' }
+                ]
+            },
+            noticias: {
+                label: 'Notícia',
+                description: 'Cadastre ou edite notícias.',
+                fields: [
+                    { name: 'titulo', label: 'Título', type: 'text', placeholder: 'Digite o título' },
+                    { name: 'data', label: 'Data', type: 'date' },
+                    { name: 'categoria', label: 'Categoria', type: 'select', optionsKey: 'categorias' },
+                    { name: 'texto', label: 'Texto', type: 'textarea', placeholder: 'Digite o texto completo da notícia' }
+                ]
+            }
+        };
+
+        const params = new URLSearchParams(window.location.search);
+        const entity = params.get('entity') || 'usuarios';
+        const id = params.get('id');
+        const config = entityConfig[entity] || entityConfig.usuarios;
+        const storageKey = `dashboard_${entity}`;
+        const listUrl = `lista.html?entity=${entity}`;
+        const cancelButton = document.getElementById('cancelButton');
+
+        document.getElementById('pageTitle').textContent = `${config.label} - Cadastro`;
+        document.getElementById('pageDescription').textContent = config.description;
+        document.getElementById('formTitle').textContent = id ? `Editar ${config.label}` : `Novo ${config.label}`;
+        cancelButton.href = listUrl;
+
+        function getItems(key) {
+            return JSON.parse(localStorage.getItem(key) || '[]');
+        }
+
+        function saveItems(key, items) {
+            localStorage.setItem(key, JSON.stringify(items));
+        }
+
+        function getCategoryOptions() {
+            const categories = getItems('dashboard_categorias');
+            if (!categories.length) {
+                return [{ value: '', label: 'Nenhuma categoria cadastrada' }];
+            }
+            return categories.map(cat => ({ value: cat.id, label: cat.titulo }));
+        }
+
+        function buildFields() {
+            const container = document.getElementById('fieldsContainer');
+            container.innerHTML = '';
+            const existingItems = getItems(storageKey);
+            const item = id ? existingItems.find(record => record.id === id) : null;
+
+            config.fields.forEach(field => {
+                const group = document.createElement('div');
+                group.className = 'form-group';
+
+                const label = document.createElement('label');
+                label.htmlFor = field.name;
+                label.textContent = field.label;
+                group.appendChild(label);
+
+                let input;
+                if (field.type === 'textarea') {
+                    input = document.createElement('textarea');
+                    input.rows = 5;
+                } else if (field.type === 'select') {
+                    input = document.createElement('select');
+                    const options = field.options || (field.optionsKey ? getCategoryOptions() : []);
+                    options.forEach(option => {
+                        const optionElement = document.createElement('option');
+                        if (typeof option === 'object') {
+                            optionElement.value = option.value;
+                            optionElement.textContent = option.label;
+                        } else {
+                            optionElement.value = option;
+                            optionElement.textContent = option;
+                        }
+                        input.appendChild(optionElement);
+                    });
+                } else {
+                    input = document.createElement('input');
+                    input.type = field.type;
+                    if (field.placeholder) input.placeholder = field.placeholder;
+                }
+
+                input.id = field.name;
+                input.name = field.name;
+                input.value = item ? (item[field.name] || '') : '';
+                group.appendChild(input);
+                container.appendChild(group);
+            });
+        }
+
+        function handleSubmit(event) {
+            event.preventDefault();
+            const items = getItems(storageKey);
+            const form = event.target;
+            const values = {};
+            const errors = [];
+
+            config.fields.forEach(field => {
+                values[field.name] = form[field.name].value.trim();
+                if (!values[field.name]) {
+                    errors.push(`O campo ${field.label} não pode ficar em branco.`);
+                }
+            });
+
+            if (errors.length) {
+                alert(errors.join('\n'));
+                return;
+            }
+
+            if (id) {
+                const index = items.findIndex(record => record.id === id);
+                if (index !== -1) {
+                    items[index] = { ...items[index], ...values };
+                }
+            } else {
+                const nextId = items.reduce((max, item) => Math.max(max, Number(item.id || 0)), 0) + 1;
+                items.push({ id: String(nextId), ...values });
+            }
+
+            saveItems(storageKey, items);
+            window.location.href = listUrl;
+        }
+
+        document.getElementById('entityForm').addEventListener('submit', handleSubmit);
+        buildFields();
+    </script>
+</body>
+</html>
